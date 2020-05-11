@@ -5,32 +5,32 @@ function [T, Info_Eff, X] = ANOVA(Data, varargin)
 %
 % Input Arguments:
 % 
-%' Data  -  Nxp matrix. N number of all observation. p contains one column
+%  Data  -  Nxp matrix. N number of all observation. p contains one column
 %           for Subjects (Sub), one column for the dependent variable (DV), 
 %           and at least one column for a between-subjects (BW) or
 %           within-subjects (WI) factor. Matrix has to be in long format,
 %           so each row represents one distinct observation of the DV
-%' Sub   -  integer indicating the column of Data containing the Subjects    
-%' DV    -  integer indicating the column of Data containing the DV
-%' BW    -  integer or vector of integers indicating the column of Data
+%  Sub   -  integer indicating the column of Data containing the Subjects    
+%  DV    -  integer indicating the column of Data containing the DV
+%  BW    -  integer or vector of integers indicating the column of Data
 %           containing all the between-subjects effects
-%' WI    -  integer or vector of integers indicating the column of Data
+%  WI    -  integer or vector of integers indicating the column of Data
 %           containing all the within-subjects effects
-%' type  -  integer indicating Type of Sum of Squares. Options are 1 for
+%  type  -  integer indicating Type of Sum of Squares. Options are 1 for
 %           Type I, 2 for Type II and 3 for Type III (default is Type III)
-%' BW_names - cell vector of strings containing the names of the different
+%  BW_names - cell vector of strings containing the names of the different
 %             between-subject factors. Must be the same length and exact
 %             succession of BW (default will be integers)
-%' WI_names - cell vector of strings containing the names of the different
+%  WI_names - cell vector of strings containing the names of the different
 %             within-subject factors. Must be the same length and exact
 %             succession of WI (default will be integers
 %
 % Output Arguments:
 %
-%' T        - table containing the results
-%' Info_Eff - cell containing the design and hypotheses matrix for each
+%  T        - table containing the results
+%  Info_Eff - cell containing the design and hypotheses matrix for each
 %             effect in the ANOVA
-%' X        - the design matrix
+%  X        - the design matrix
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -39,16 +39,16 @@ function [T, Info_Eff, X] = ANOVA(Data, varargin)
 list_input = varargin;
 list_input = reshape(list_input,2,[])';
 
-if(sum(strcmp(list_input(:,1),'Sub')) == 1 && sum(strcmp(list_input(:,1),'AV')) == 1)
-    if(isnumeric(list_input{strcmp(list_input,'Sub'),2}) && isnumeric(list_input{strcmp(list_input,'AV'),2})... 
-        && length(list_input{strcmp(list_input,'Sub'),2}) == 1 && length(list_input{strcmp(list_input,'AV'),2}) == 1)
+if(sum(strcmp(list_input(:,1),'Sub')) == 1 && sum(strcmp(list_input(:,1),'DV')) == 1)
+    if(isnumeric(list_input{strcmp(list_input,'Sub'),2}) && isnumeric(list_input{strcmp(list_input,'DV'),2})... 
+        && length(list_input{strcmp(list_input,'Sub'),2}) == 1 && length(list_input{strcmp(list_input,'DV'),2}) == 1)
         Sub = list_input{strcmp(list_input,'Sub'),2};
-        AV = list_input{strcmp(list_input,'AV'),2};
+        DV = list_input{strcmp(list_input,'DV'),2};
     else
-        error('Error: Sub Index and AV Index need to be single integer!')
+        error('Error: Sub Index and DV Index need to be single integer!')
     end
 else
-    error('Error: Sub Index and/or AV Index missing!');
+    error('Error: Sub Index and/or DV Index missing!');
 end
 
 if(sum(strcmp(list_input(:,1),'BW')) == 1)
@@ -71,8 +71,8 @@ if(isempty(WI) && isempty(BW))
     error('Error:  BW and WI both empty!')
 end
 
-if(Sub == AV || ~isempty(intersect([Sub AV],[BW WI])) || ~isempty(intersect(BW, WI)))
-    error('Error: Sub, AV, WI and BW have to be independent integers or vectors of integers!')
+if(Sub == DV || ~isempty(intersect([Sub DV],[BW WI])) || ~isempty(intersect(BW, WI)))
+    error('Error: Sub, DV, WI and BW have to be independent integers or vectors of integers!')
 end
 
 if(sum(strcmp(list_input(:,1), 'type')) == 1)
@@ -98,19 +98,19 @@ end
 
 Min_Design = unique(Data(:,[Sub BW  WI]),'rows');
 if(size(Min_Design,1) < size(Data,1))
-    Meas = accumarray(Data(:,[Sub fliplr(WI)]),Data(:,AV),[],@mean);
+    Meas = accumarray(Data(:,[Sub fliplr(WI)]),Data(:,DV),[],@mean);
     for i = 1:size(Meas,1)
         Min_Design(Min_Design(:,1) == i,length([Sub BW  WI])+1) = Meas(i,:)';
     end
 else
-    Min_Design(:,end+1) = Data(:,AV);
+    Min_Design(:,end+1) = Data(:,DV);
 end
 BW_min = 2:1+length(BW);
 WI_min = 1+length(BW)+(1:length(WI));
-AV_min = size(Min_Design,2);
+DV_min = size(Min_Design,2);
 
 
-[X, y, Info_Eff, S_ind] = get_X_y_Info_S(Min_Design, 1, AV_min, BW_min, WI_min, method);
+[X, y, Info_Eff, S_ind, wi_Eff] = get_X_y_Info_S(Min_Design, 1, DV_min, BW_min, WI_min, method);
 N = size(S_ind,2);
 
 Err_list = [1; find(~cellfun(@isempty, regexp(Info_Eff(:,1),'Err')))];
@@ -156,7 +156,7 @@ end
 
 
 T = Info_Eff(:,1);
-for i = 1:size(Info_Eff)
+for i = 1:size(Info_Eff,1)
     
     if(i == 1)
         
@@ -186,7 +186,7 @@ for i = 1:size(Info_Eff)
         T{i,3} = size(X2rr,2);
         T{i,4} = T{i,2} / T{i,3};
         
-        if(~isempty(Info_Eff{i,3}) && Err_list(2) < i)
+        if(sum(strcmp(Info_Eff{i,1},wi_Eff)) > 0)
             
             M = orth(All_WI(:,1:length(Info_Eff{i,2})))';
             All_WI(:,1:length(Info_Eff{i,2})) = [];
@@ -260,10 +260,10 @@ T = cell2table(T,'VariableNames',VariableNames);
 end
 
 
-function [X, y, Info_Eff, S_ind] = get_X_y_Info_S(Data, Sub, AV, BW, WI, method)
+function [X, y, Info_Eff, S_ind, wi_Eff] = get_X_y_Info_S(Data, Sub, DV, BW, WI, method)
 
 X = ones(size(Data,1),1);
-y = Data(:,AV);
+y = Data(:,DV);
 S = Data(:,Sub);
 
 S_ind = dummyvar(S);
@@ -278,7 +278,7 @@ if(exist('method','var'))
     end
 end
 
-Info_Eff = {'Intercept',1};
+Info_Eff = {'Intercept',1,ones(size(Data,1),1)};
 end_ineff = 1;
 if(exist('BW','var'))
         
@@ -316,6 +316,16 @@ if(exist('BW','var'))
             Info_Eff{i+end_ineff,1} = bw_Eff{i,1};
             Info_Eff{i+end_ineff,2} = (size(X,2)+1):((size(X,2)) + size(IA,2));
             X = [X IA];
+            
+            x_h1 = Info_Eff{strcmp(Info_Eff(:,1), fp),3};
+            x_h2 = Info_Eff{strcmp(Info_Eff(:,1), sp),3};
+            IA = zeros(size(x_h1,1), size(x_h1,2)*size(x_h2,2));
+            for m = 1:size(x_h1,2)
+                for n = 1:size(x_h2,2)
+                    IA(:,(m-1)*size(x_h2,2)+n) = x_h1(:,m).*x_h2(:,n);
+                end
+            end
+            Info_Eff{i+end_ineff,3} = IA;
         end
     end
     
@@ -394,6 +404,16 @@ if(exist('WI','var'))
                 Info_Eff{1+end_ineff+j,1} = [bw_Eff{j,1},'_',wi_Eff{i,1}];
                 Info_Eff{1+end_ineff+j,2} = (size(X,2)+1):((size(X,2)) + size(IA,2));
                 X = [X IA];
+                
+                x_h1 = Info_Eff{strcmp(Info_Eff(:,1), bw_Eff{j,1}),3};
+                x_h2 = Info_Eff{strcmp(Info_Eff(:,1), wi_Eff{i,1}),3};
+                IA = zeros(size(x_h1,1), size(x_h1,2)*size(x_h2,2));
+                for m = 1:size(x_h1,2)
+                    for n = 1:size(x_h2,2)
+                        IA(:,(m-1)*size(x_h2,2)+n) = x_h1(:,m).*x_h2(:,n);
+                    end
+                end
+                Info_Eff{end,3} = IA;
             end
             
         end
